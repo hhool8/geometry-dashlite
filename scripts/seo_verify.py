@@ -51,6 +51,18 @@ GAME_ONLY_CHECKS = {
     'cwv_tracking': (lambda t: 'Core Web Vitals tracking' in t, 'INFO'),
 }
 
+
+def og_image_file_exists(txt):
+    """Return True if the og:image URL resolves to an existing file on disk."""
+    m = re.search(r'<meta property="og:image" content="(https?://[^"]+)"', txt)
+    if not m:
+        return False
+    url = m.group(1)
+    if not url.startswith(DOMAIN):
+        return False
+    rel_path = url[len(DOMAIN):].lstrip('/')
+    return os.path.exists(rel_path)
+
 HOMEPAGE_ONLY_CHECKS = {
     'schema_website': (lambda t: '"@type": "WebSite"' in t, 'WARNING'),
     'schema_faq': (lambda t: '"@type": "FAQPage"' in t, 'INFO'),
@@ -85,6 +97,10 @@ for fname in ALL_PAGES:
             if not fn(txt):
                 issues.append((level, check))
                 total_issues[level] += 1
+        # Verify og:image file actually exists on disk
+        if not og_image_file_exists(txt):
+            issues.append(('CRITICAL', 'og_image_file_missing'))
+            total_issues['CRITICAL'] += 1
 
     # Homepage-only checks
     if fname == 'index.html':
